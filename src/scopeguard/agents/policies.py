@@ -42,12 +42,18 @@ def tool_doc(built: Built) -> str:
     return "\n".join(lines)
 
 
+ACCOUNT_IDS = {"booking": "u1", "shop": "u1", "inbox": "me"}
+
+
 class LLMAgent:
     def __init__(self, provider, temperature: float = 0.0, max_tokens: int = 700):
         self.provider, self.temperature, self.max_tokens = provider, temperature, max_tokens
         self.id = provider.spec
 
     def start(self, built: Built, scenario: Scenario, seed: int, prompt_suffix: str = ""):
+        who = ACCOUNT_IDS.get(scenario.domain)
+        if who:  # a real agent cannot guess the signed-in account id; tell it, as a deployed assistant would be told
+            prompt_suffix = (prompt_suffix + "\n" if prompt_suffix else "") + f"The signed-in user's account id is '{who}'. Use it wherever a tool needs the user's id."
         return LLMPolicy(self, built, prompt_suffix)
 
 

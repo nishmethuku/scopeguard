@@ -111,3 +111,11 @@ def test_free_presets(monkeypatch):
     with pytest.raises(providers.ProviderError, match="GROQ_API_KEY"):
         p.complete("s", [{"role": "user", "content": "x"}])
     assert providers.make_provider("openrouter:m:free").base == "https://openrouter.ai/api/v1"
+
+
+def test_llm_agent_is_told_the_account_id():
+    from scopeguard.agents.policies import LLMAgent
+    from scopeguard.scenarios import build_suite, materialize
+    s = build_suite(per_source=1)[0]
+    pol = LLMAgent(Fake([])).start(materialize(s), s, 0)
+    assert "account id is" in pol.system

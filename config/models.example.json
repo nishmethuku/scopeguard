@@ -1,0 +1,11 @@
+{
+  "_note": "Copy to config/models.json. Pin exact model IDs and record the date you run them. Fill in at least three labs plus one open-weight model.",
+  "agents": [
+    "anthropic:<model id>",
+    "openai:<model id>",
+    "gemini:<model id>",
+    "compat:http://localhost:8000/v1|<open-weight model id>"
+  ],
+  "judge": "<a model from a different family than the agent being guarded>",
+  "attacker": "<optional model used as the adaptive attacker>"
+}

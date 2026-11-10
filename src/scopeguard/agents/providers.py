@@ -116,7 +116,7 @@ class OpenAICompatProvider(Provider):
         headers = {"authorization": f"Bearer {self.key}"} if self.key else {}
         try:
             r = self._post(f"{self.base}/chat/completions", headers,
-                           {"model": self.model, "max_tokens": max_tokens, "temperature": temperature,
+                           {"model": self.model, "max_tokens": max(max_tokens, 4096), "temperature": temperature,
                             "messages": [{"role": "system", "content": system}] + messages})
         except ProviderError as e:
             # Some hosts reject a model that emits its own native tool-call syntax instead of our JSON protocol.

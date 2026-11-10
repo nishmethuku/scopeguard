@@ -49,7 +49,7 @@ class Provider:
                 if wait > 0:
                     time.sleep(wait)
 
-    def _post(self, url: str, headers: dict, body: dict, retries: int = 4) -> dict:
+    def _post(self, url: str, headers: dict, body: dict, retries: int = 8) -> dict:
         self._gate()
         data = json.dumps(body).encode()
         for attempt in range(retries + 1):
@@ -59,12 +59,12 @@ class Provider:
                     return json.loads(r.read())
             except urllib.error.HTTPError as e:
                 if e.code in (429, 500, 502, 503, 529) and attempt < retries:
-                    time.sleep(2 ** attempt)
+                    time.sleep(min(5 * 2 ** attempt, 90))
                     continue
                 raise ProviderError(f"HTTP {e.code} from {url.split('?')[0]}: {e.read()[:300]!r}")
             except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
                 if attempt < retries:
-                    time.sleep(2 ** attempt)
+                    time.sleep(min(5 * 2 ** attempt, 90))
                     continue
                 raise ProviderError(f"network error: {e}")
         raise ProviderError("unreachable")

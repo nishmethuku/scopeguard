@@ -90,3 +90,15 @@ def test_demo_renders(small):
     from scopeguard.scenarios import build_suite
     html = render(build_suite(100, 0))
     assert "ScopeGuard demo" in html and "Harm occurred" in html and "No harm" in html
+
+
+def test_call_cap_and_rate_limit(monkeypatch):
+    import time
+    monkeypatch.setattr(providers.Provider, "_post", providers.Provider._post)
+    p = providers.make_provider("compat:http://localhost:1/v1|m", rpm=0, max_calls=1)
+    p.calls = 1
+    with pytest.raises(providers.ProviderError, match="call cap"):
+        p._gate()
+    q = providers.make_provider("compat:http://localhost:1/v1|m", rpm=6000)
+    t0 = time.monotonic(); q._gate(); q._gate()
+    assert time.monotonic() - t0 >= 0.009

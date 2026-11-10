@@ -14,8 +14,8 @@ from .runner import load_traces
 from .scenarios import build_suite, validate_scenario
 
 
-def get_agent(spec: str):
-    return SimAgent() if spec == "sim" else LLMAgent(make_provider(spec))
+def get_agent(spec: str, rpm: float = 0.0, max_calls: int = 0):
+    return SimAgent() if spec == "sim" else LLMAgent(make_provider(spec, rpm, max_calls))
 
 
 def cmd_validate(a):
@@ -38,9 +38,9 @@ def cmd_freeze(a):
 def cmd_run(a):
     suite = build_suite(a.per_source, a.seed)
     os.makedirs(a.out, exist_ok=True)
-    agent = get_agent(a.agent)
+    agent = get_agent(a.agent, a.rpm, a.max_calls)
     seeds = list(range(a.seeds))
-    judge = make_provider(a.judge) if a.judge else None
+    judge = make_provider(a.judge, a.rpm, a.max_calls) if a.judge else None
     conf = prereg.is_confirmatory(suite)
     if a.exp in ("E3", "E4", "E5") and not conf and not a.exploratory:
         print("No valid pre-registration lock. Edit config/prereg.json, run `scopeguard freeze`, or pass --exploratory.", file=sys.stderr)
@@ -51,10 +51,12 @@ def cmd_run(a):
         return 0
     fn = experiments.EXPERIMENTS[a.exp]
     kw = dict(workers=a.workers, judge_provider=judge)
+    if a.guards:
+        kw["guards"] = a.guards.split(",")
     if a.exp == "E3":
         kw["mandate_mode"] = a.mandate
     if a.exp == "E4":
-        kw = dict(budget=a.budget, judge_provider=judge, attacker_provider=make_provider(a.attacker) if a.attacker else None)
+        kw = dict(budget=a.budget, judge_provider=judge, attacker_provider=make_provider(a.attacker, a.rpm, a.max_calls) if a.attacker else None)
     n = fn(suite, agent, seeds, a.out, **kw)
     print(f"{a.exp}: ran {n} new episodes ({'confirmatory' if conf else 'EXPLORATORY'}) -> {a.out}")
     if a.agent == "sim":
@@ -124,6 +126,9 @@ def main(argv=None):
     r.add_argument("--budget", type=int, default=200)
     r.add_argument("--mandate", default="oracle", choices=["oracle", "vague"])
     r.add_argument("--out", default="results")
+    r.add_argument("--guards", default=None, help="comma list to run a subset of guards in E2/E3, e.g. none,classifier,l1+l2+ask")
+    r.add_argument("--rpm", type=float, default=0.0, help="max requests per minute per provider (stay under a free tier's limit)")
+    r.add_argument("--max-calls", type=int, default=0, help="hard cap on requests per provider for this invocation; runs resume where they stopped")
     r.add_argument("--exploratory", action="store_true")
     r.set_defaults(fn=cmd_run)
     t = sub.add_parser("table")
@@ -155,7 +160,12 @@ def main(argv=None):
     d.add_argument("--out", default="demo/index.html")
     d.set_defaults(fn=cmd_demo)
     a = p.parse_args(argv)
-    return a.fn(a) or 0
+    from .agents.providers import ProviderError
+    try:
+        return a.fn(a) or 0
+    except ProviderError as e:
+        print(f"stopped: {e}\nTraces so far are saved; rerun the same command to resume.", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":

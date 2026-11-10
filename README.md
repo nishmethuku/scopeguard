@@ -24,6 +24,8 @@ The `sim` agent is a toy used to exercise the harness. **Its numbers are not res
 
 ## Running real models
 
+**No budget?** See [docs/FREE.md](docs/FREE.md): local models, free API tiers, `--rpm`, `--max-calls`, and a small-suite plan.
+
 ```bash
 export ANTHROPIC_API_KEY=...   # and/or OPENAI_API_KEY, GEMINI_API_KEY, COMPAT_API_KEY
 scopeguard estimate --exp E3 --price-in <usd per M> --price-out <usd per M>   # estimate cost first

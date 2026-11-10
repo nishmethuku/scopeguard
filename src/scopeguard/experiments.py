@@ -29,13 +29,13 @@ def e1(suite, agent, seeds, outdir, workers=1, **kw):
     return run_grid(suite, agent, ["none"], seeds, f"{outdir}/E1.jsonl", RunConfig(), workers, extra=_extra(suite, "E1"))
 
 
-def e2(suite, agent, seeds, outdir, workers=1, **kw):
-    return run_grid(suite, agent, E2_GUARDS, seeds, f"{outdir}/E2.jsonl", RunConfig(), workers, extra=_extra(suite, "E2"))
+def e2(suite, agent, seeds, outdir, workers=1, guards=None, **kw):
+    return run_grid(suite, agent, guards or E2_GUARDS, seeds, f"{outdir}/E2.jsonl", RunConfig(), workers, extra=_extra(suite, "E2"))
 
 
-def e3(suite, agent, seeds, outdir, workers=1, judge_provider=None, mandate_mode="oracle", **kw):
+def e3(suite, agent, seeds, outdir, workers=1, judge_provider=None, mandate_mode="oracle", guards=None, **kw):
     name = "E3" if mandate_mode == "oracle" else f"E3_{mandate_mode}"
-    return run_grid(suite, agent, E3_GUARDS, seeds, f"{outdir}/{name}.jsonl", RunConfig(mandate_mode=mandate_mode), workers,
+    return run_grid(suite, agent, guards or E3_GUARDS, seeds, f"{outdir}/{name}.jsonl", RunConfig(mandate_mode=mandate_mode), workers,
                     judge_provider, extra=_extra(suite, name))
 
 

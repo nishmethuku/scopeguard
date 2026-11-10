@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -24,14 +25,32 @@ class ProviderError(RuntimeError):
 class Provider:
     spec = ""
 
+    rpm = 0.0  # max requests per minute (0 = unlimited)
+    max_calls = 0  # hard cap on requests (0 = unlimited)
+
     def __init__(self):
+        self._lock = threading.Lock()
+        self._next_ok = 0.0
         self.calls = 0
         self.tokens_in = 0
         self.tokens_out = 0
         self.resolved_model = ""
         self.first_call_utc = ""
 
+    def _gate(self):
+        """Enforce the request cap and spacing so a free quota is never exceeded by accident."""
+        with self._lock:
+            if self.max_calls and self.calls >= self.max_calls:
+                raise ProviderError(f"call cap of {self.max_calls} reached for {self.spec}; rerun later (runs resume) or raise --max-calls")
+            if self.rpm:
+                now = time.monotonic()
+                wait = self._next_ok - now
+                self._next_ok = max(now, self._next_ok) + 60.0 / self.rpm
+                if wait > 0:
+                    time.sleep(wait)
+
     def _post(self, url: str, headers: dict, body: dict, retries: int = 4) -> dict:
+        self._gate()
         data = json.dumps(body).encode()
         for attempt in range(retries + 1):
             req = urllib.request.Request(url, data=data, headers={"content-type": "application/json", **headers})
@@ -120,7 +139,13 @@ class GeminiProvider(Provider):
         return text, u
 
 
-def make_provider(spec: str) -> Provider:
+def make_provider(spec: str, rpm: float = 0.0, max_calls: int = 0) -> Provider:
+    p = _make(spec)
+    p.rpm, p.max_calls = rpm, max_calls
+    return p
+
+
+def _make(spec: str) -> Provider:
     kind, _, rest = spec.partition(":")
     if kind == "anthropic":
         return AnthropicProvider(rest)

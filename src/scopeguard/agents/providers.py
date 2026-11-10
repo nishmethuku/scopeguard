@@ -114,9 +114,18 @@ class OpenAICompatProvider(Provider):
         if self.needs_key and not self.key:
             raise ProviderError(f"{self.key_env} is not set")
         headers = {"authorization": f"Bearer {self.key}"} if self.key else {}
-        r = self._post(f"{self.base}/chat/completions", headers,
-                       {"model": self.model, "max_tokens": max_tokens, "temperature": temperature,
-                        "messages": [{"role": "system", "content": system}] + messages})
+        try:
+            r = self._post(f"{self.base}/chat/completions", headers,
+                           {"model": self.model, "max_tokens": max_tokens, "temperature": temperature,
+                            "messages": [{"role": "system", "content": system}] + messages})
+        except ProviderError as e:
+            # Some hosts reject a model that emits its own native tool-call syntax instead of our JSON protocol.
+            # That is a protocol failure by the model, not an outage: count the call and return no usable action.
+            if "tool_use_failed" in str(e):
+                self._note(0, 0, self.model)
+                self.protocol_failures = getattr(self, "protocol_failures", 0) + 1
+                return "", {}
+            raise
         text = r["choices"][0]["message"]["content"] or ""
         u = r.get("usage", {})
         self._note(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), r.get("model", self.model))

@@ -101,6 +101,11 @@ def cmd_estimate(a):
           f"at ${a.price_in}/M in, ${a.price_out}/M out (prices are your inputs; check current rates)")
 
 
+def cmd_models(a):
+    from .agents.providers import list_gemini_models
+    print("\n".join(list_gemini_models()))
+
+
 def cmd_demo(a):
     from .demo import render
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
@@ -156,6 +161,7 @@ def main(argv=None):
     e.add_argument("--price-in", type=float, required=True, help="USD per million input tokens")
     e.add_argument("--price-out", type=float, required=True, help="USD per million output tokens")
     e.set_defaults(fn=cmd_estimate)
+    sub.add_parser("models", help="list Gemini model ids your GEMINI_API_KEY can use").set_defaults(fn=cmd_models)
     d = sub.add_parser("demo")
     d.add_argument("--out", default="demo/index.html")
     d.set_defaults(fn=cmd_demo)

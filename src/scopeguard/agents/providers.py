@@ -130,7 +130,7 @@ class GeminiProvider(Provider):
         if not self.key:
             raise ProviderError("GEMINI_API_KEY is not set")
         contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]} for m in messages]
-        r = self._post(f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.key}", {},
+        r = self._post(f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent", {"x-goog-api-key": self.key},
                        {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents,
                         "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens}})
         text = "".join(p.get("text", "") for p in r["candidates"][0]["content"]["parts"])
@@ -157,3 +157,17 @@ def _make(spec: str) -> Provider:
     if kind == "gemini":
         return GeminiProvider(rest)
     raise ValueError(f"unknown provider spec '{spec}'")
+
+
+def list_gemini_models() -> list[str]:
+    """Model ids your key can call for text generation (run this to pick a --agent value)."""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        raise ProviderError("GEMINI_API_KEY is not set")
+    req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            d = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise ProviderError(f"HTTP {e.code}: {e.read()[:200]!r}")
+    return [m["name"].removeprefix("models/") for m in d.get("models", []) if "generateContent" in m.get("supportedGenerationMethods", [])]

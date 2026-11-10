@@ -53,7 +53,7 @@ class Provider:
         self._gate()
         data = json.dumps(body).encode()
         for attempt in range(retries + 1):
-            req = urllib.request.Request(url, data=data, headers={"content-type": "application/json", **headers})
+            req = urllib.request.Request(url, data=data, headers={"content-type": "application/json", "user-agent": "scopeguard/0.1 (+https://github.com/nishmethuku/scopeguard)", **headers})
             try:
                 with urllib.request.urlopen(req, timeout=120) as r:
                     return json.loads(r.read())

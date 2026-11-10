@@ -62,7 +62,7 @@ class Provider:
                     time.sleep(2 ** attempt)
                     continue
                 raise ProviderError(f"HTTP {e.code} from {url.split('?')[0]}: {e.read()[:300]!r}")
-            except urllib.error.URLError as e:
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
                 if attempt < retries:
                     time.sleep(2 ** attempt)
                     continue
@@ -132,8 +132,11 @@ class GeminiProvider(Provider):
         contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]} for m in messages]
         r = self._post(f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent", {"x-goog-api-key": self.key},
                        {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents,
-                        "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens}})
-        text = "".join(p.get("text", "") for p in r["candidates"][0]["content"]["parts"])
+                        "generationConfig": {"temperature": temperature, "maxOutputTokens": max(max_tokens, 4096)}})
+        cand = (r.get("candidates") or [{}])[0]
+        text = "".join(p.get("text", "") for p in cand.get("content", {}).get("parts", []))
+        if not text:
+            raise ProviderError(f"empty reply from {self.model} (finishReason={cand.get('finishReason')})")
         u = r.get("usageMetadata", {})
         self._note(u.get("promptTokenCount", 0), u.get("candidatesTokenCount", 0), r.get("modelVersion", self.model))
         return text, u

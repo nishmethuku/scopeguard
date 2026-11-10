@@ -106,10 +106,13 @@ class OpenAICompatProvider(Provider):
     def __init__(self, model: str, base_url: str = "https://api.openai.com/v1", key_env: str = "OPENAI_API_KEY", label: str = "openai"):
         super().__init__()
         self.model, self.base = model, base_url.rstrip("/")
-        self.spec = f"{label}:{model}" if label == "openai" else f"compat:{base_url}|{model}"
+        self.spec = f"{label}:{model}" if label in ("openai", "groq", "openrouter") else f"compat:{base_url}|{model}"
         self.key = os.environ.get(key_env, "")
+        self.key_env, self.needs_key = key_env, label in ("groq", "openrouter")
 
     def complete(self, system, messages, max_tokens=700, temperature=0.0):
+        if self.needs_key and not self.key:
+            raise ProviderError(f"{self.key_env} is not set")
         headers = {"authorization": f"Bearer {self.key}"} if self.key else {}
         r = self._post(f"{self.base}/chat/completions", headers,
                        {"model": self.model, "max_tokens": max_tokens, "temperature": temperature,
@@ -142,6 +145,13 @@ class GeminiProvider(Provider):
         return text, u
 
 
+# Free-tier OpenAI-compatible endpoints: spec "groq:<model>" reads GROQ_API_KEY, "openrouter:<model>" reads OPENROUTER_API_KEY.
+FREE_PRESETS = {
+    "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY"),
+    "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+}
+
+
 def make_provider(spec: str, rpm: float = 0.0, max_calls: int = 0) -> Provider:
     p = _make(spec)
     p.rpm, p.max_calls = rpm, max_calls
@@ -159,6 +169,9 @@ def _make(spec: str) -> Provider:
         return OpenAICompatProvider(model, base, "COMPAT_API_KEY", "compat")
     if kind == "gemini":
         return GeminiProvider(rest)
+    if kind in FREE_PRESETS:
+        base, env = FREE_PRESETS[kind]
+        return OpenAICompatProvider(rest, base, env, kind)
     raise ValueError(f"unknown provider spec '{spec}'")
 
 

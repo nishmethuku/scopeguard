@@ -102,3 +102,12 @@ def test_call_cap_and_rate_limit(monkeypatch):
     q = providers.make_provider("compat:http://localhost:1/v1|m", rpm=6000)
     t0 = time.monotonic(); q._gate(); q._gate()
     assert time.monotonic() - t0 >= 0.009
+
+
+def test_free_presets(monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    p = providers.make_provider("groq:llama-x")
+    assert p.spec == "groq:llama-x" and p.base == "https://api.groq.com/openai/v1"
+    with pytest.raises(providers.ProviderError, match="GROQ_API_KEY"):
+        p.complete("s", [{"role": "user", "content": "x"}])
+    assert providers.make_provider("openrouter:m:free").base == "https://openrouter.ai/api/v1"

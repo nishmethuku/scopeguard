@@ -56,3 +56,17 @@ Smaller suites give wider intervals. Say the suite size in any write-up.
 - 429 means a free quota is used up (per minute or per day). Lower `--rpm`, wait for the daily reset, or switch to another model, since quotas are per model.
 - Keep `--max-calls` under the daily limit of the model you use. Calls are counted per run, not per day.
 - Never put an API key in a file, a commit or a chat. Use the `GEMINI_API_KEY` environment variable and rotate the key if it leaks.
+
+## Fallback free providers
+
+If Google is overloaded, use another free key. Both are OpenAI-compatible and need no card:
+
+```bash
+export GROQ_API_KEY=...        # https://console.groq.com/keys
+scopeguard --per-source 5 run --exp E1 --agent groq:<model id> --seeds 1 --rpm 20 --max-calls 400 --out results
+
+export OPENROUTER_API_KEY=...  # https://openrouter.ai/keys (use model ids ending in :free)
+scopeguard --per-source 5 run --exp E1 --agent openrouter:<model id>:free --seeds 1 --rpm 10 --max-calls 150 --out results
+```
+
+Check each provider's current free model list and limits yourself; they change often. Report the model ID exactly as run.

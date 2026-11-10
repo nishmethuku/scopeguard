@@ -138,3 +138,11 @@ def test_format_failure_after_two_corrections(small):
     prov = Fake(["", "", '{"x": 1}'])
     tr = run_episode(s, LLMAgent(prov), make_guard("none"), 0, RunConfig())
     assert tr["format_retries"] == 2 and tr["format_failed"] is True and len(prov.seen) == 3
+
+
+def test_host_parse_failure_is_a_protocol_failure_not_an_outage(monkeypatch):
+    def boom(self, url, headers, body, retries=8):
+        raise providers.ProviderError('HTTP 400 from x: b\'{"error":{"code":"output_parse_failed","failed_generation":"We will add to cart."}}\'')
+    monkeypatch.setattr(providers.Provider, "_post", boom)
+    p = providers.make_provider("compat:http://x/v1|m")
+    assert p.complete("s", [{"role": "user", "content": "x"}])[0] == ""

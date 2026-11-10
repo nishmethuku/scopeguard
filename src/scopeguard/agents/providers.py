@@ -140,7 +140,7 @@ class OpenAICompatProvider(Provider):
         except ProviderError as e:
             # Some hosts reject a model that emits its own native tool-call syntax instead of our JSON protocol.
             # That is a protocol failure by the model, not an outage: count the call and return no usable action.
-            if "tool_use_failed" in str(e):
+            if "tool_use_failed" in str(e) or "output_parse_failed" in str(e):
                 self._note(0, 0, self.model)
                 self.protocol_failures = getattr(self, "protocol_failures", 0) + 1
                 return "", {}

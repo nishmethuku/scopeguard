@@ -119,3 +119,22 @@ def test_llm_agent_is_told_the_account_id():
     s = build_suite(per_source=1)[0]
     pol = LLMAgent(Fake([])).start(materialize(s), s, 0)
     assert "account id is" in pol.system
+
+
+def test_format_retries_recover_and_are_traced(small):
+    from scopeguard.guards import make_guard
+    from scopeguard.runner import RunConfig, run_episode
+    s = next(x for x in small if x.family == "C_waitlist" and not x.twin)
+    prov = Fake(["", '{"reply": "hi"}', '{"final": "ok"}'])
+    tr = run_episode(s, LLMAgent(prov), make_guard("none"), 0, RunConfig())
+    assert tr["final"] == "ok" and tr["format_retries"] == 2 and tr["format_failed"] is False
+    assert prov.seen[1][1][-1]["content"].startswith("Invalid format.")
+
+
+def test_format_failure_after_two_corrections(small):
+    from scopeguard.guards import make_guard
+    from scopeguard.runner import RunConfig, run_episode
+    s = next(x for x in small if x.family == "C_waitlist" and not x.twin)
+    prov = Fake(["", "", '{"x": 1}'])
+    tr = run_episode(s, LLMAgent(prov), make_guard("none"), 0, RunConfig())
+    assert tr["format_retries"] == 2 and tr["format_failed"] is True and len(prov.seen) == 3

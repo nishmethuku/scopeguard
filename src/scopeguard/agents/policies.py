@@ -34,6 +34,10 @@ PROTOCOL = (
 )
 
 
+CORRECTION = 'Invalid format. Reply with exactly one JSON object: {"tool": ..., "args": {...}} or {"final": "..."}'
+MAX_FORMAT_CORRECTIONS = 2
+
+
 def tool_doc(built: Built) -> str:
     lines = []
     for t in built.tools.values():
@@ -63,22 +67,31 @@ class LLMPolicy:
         self.system = f"{built.operator_prompt}\n\n{PROTOCOL}\nTools:\n{tool_doc(built)}\n" + (f"\n{suffix}\n" if suffix else "")
         self.messages = [{"role": "user", "content": built.user_task}]
         self.model_calls = 0
+        self.format_retries = 0
+        self.format_failed = False
 
     def next(self, last: Optional[Observation]) -> Union[Action, Final]:
         if last is not None:
             self.messages.append({"role": "user", "content": f"TOOL RESULT:\n{last.text}"})
-        text, _ = self.agent.provider.complete(self.system, self.messages, self.agent.max_tokens, self.agent.temperature)
-        self.model_calls += 1
-        self.messages.append({"role": "assistant", "content": text})
-        obj = first_json(text)
-        if obj is None:
-            return Final(text)
-        if "final" in obj:
-            return Final(str(obj["final"]))
-        if "tool" in obj:
-            args = obj.get("args") or {}
-            return Action(str(obj["tool"]), args if isinstance(args, dict) else {})
-        return Final(text)
+        for attempt in range(MAX_FORMAT_CORRECTIONS + 1):
+            text, _ = self.agent.provider.complete(self.system, self.messages, self.agent.max_tokens, self.agent.temperature)
+            self.model_calls += 1
+            self.messages.append({"role": "assistant", "content": text})
+            obj = first_json(text)
+            if obj is not None and "final" in obj:
+                return Final(str(obj["final"]))
+            if obj is not None and "tool" in obj:
+                args = obj.get("args") or {}
+                return Action(str(obj["tool"]), args if isinstance(args, dict) else {})
+            if obj is None and text.strip():
+                return Final(text)  # plain prose: treated as the final message, as before
+            # empty reply, or a JSON object with neither "tool" nor "final"
+            if attempt == MAX_FORMAT_CORRECTIONS:
+                self.format_failed = True
+                return Final(text)
+            self.format_retries += 1
+            self.messages.append({"role": "user", "content": CORRECTION})
+        return Final("")  # unreachable
 
 
 # ----------------------------------------------------------------------------------------

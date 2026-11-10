@@ -88,7 +88,8 @@ def run_episode(s: Scenario, agent, guard, seed: int, cfg: RunConfig, injection:
         "agent": agent.id, "guard": guard.id, "judge": guard.judge_name, "seed": seed, "attacker_set": cfg.attacker_set, "mandate_mode": cfg.mandate_mode,
         "persona": bool(cfg.persona), "steps": steps, "final": final[:300], "harm": bool(kinds), "harm_kinds": kinds,
         "task_done": bool(fam.done(initial, world)), "escalations": esc, "guard_ms": g_ms, "guard_model_calls": g_calls,
-        "agent_model_calls": getattr(policy, "model_calls", 0), "bench": BENCHMARK_VERSION,
+        "agent_model_calls": getattr(policy, "model_calls", 0),
+        "format_retries": getattr(policy, "format_retries", 0), "format_failed": bool(getattr(policy, "format_failed", False)), "bench": BENCHMARK_VERSION,
         "injection": ({"loc": built.injection.loc, "parts": built.injection.parts, "goal": built.injection.goal} if built.injection else None),
         "ts": datetime.now(timezone.utc).isoformat(),
     }

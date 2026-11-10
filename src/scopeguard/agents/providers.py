@@ -102,6 +102,25 @@ class AnthropicProvider(Provider):
         return text, u
 
 
+def _trailing_json(reasoning: str) -> str:
+    """Return the last balanced {...} object in reasoning text, or "" if none."""
+    end = reasoning.rfind("}")
+    while end != -1:
+        depth = 0
+        for i in range(end, -1, -1):
+            depth += (reasoning[i] == "}") - (reasoning[i] == "{")
+            if depth == 0:
+                cand = reasoning[i:end + 1]
+                try:
+                    import json
+                    json.loads(cand)
+                    return cand
+                except ValueError:
+                    break
+        end = reasoning.rfind("}", 0, end)
+    return ""
+
+
 class OpenAICompatProvider(Provider):
     def __init__(self, model: str, base_url: str = "https://api.openai.com/v1", key_env: str = "OPENAI_API_KEY", label: str = "openai"):
         super().__init__()
@@ -126,7 +145,11 @@ class OpenAICompatProvider(Provider):
                 self.protocol_failures = getattr(self, "protocol_failures", 0) + 1
                 return "", {}
             raise
-        text = r["choices"][0]["message"]["content"] or ""
+        msg = r["choices"][0]["message"]
+        text = msg.get("content") or ""
+        if not text.strip():
+            # Reasoning models on some hosts (gpt-oss on Groq) put the final JSON action in the reasoning field.
+            text = _trailing_json(msg.get("reasoning") or msg.get("reasoning_content") or "")
         u = r.get("usage", {})
         self._note(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), r.get("model", self.model))
         return text, u

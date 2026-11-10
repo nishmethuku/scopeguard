@@ -14,7 +14,7 @@ The thesis is a hypothesis to test, not a result. Nothing in this repository is 
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                     # 29 tests
+pytest -q                     # tests (AgentDojo adapter test runs if agentdojo is installed)
 scopeguard validate           # 600 scenarios, every invariant checked
 make smoke && make table      # full pipeline on a SIMULATED agent
 scopeguard demo               # writes demo/index.html (one scenario, three ways)
@@ -56,7 +56,8 @@ E3, E4 and E5 refuse to run without a valid pre-registration lock unless you pas
 | `src/scopeguard/agents/` | Plain tool-calling loop (one for every model), providers, simulated agent. |
 | `src/scopeguard/runner.py`, `metrics.py`, `experiments.py` | Episodes, statistics, E1 to E6. |
 | `config/prereg.json` | Hypotheses, falsifiers, false-block limit, primary comparisons. |
-| `docs/` | `DESIGN.md`, `ETHICS.md`. |
+| `src/scopeguard/integrations/` | AgentDojo guard adapter. |
+| `docs/` | `DESIGN.md`, `ETHICS.md`, `FREE.md`, `KNOWN_GAPS.md`, `PREREGISTRATION.md`. |
 
 ## What the benchmark contains
 
@@ -75,7 +76,7 @@ Three numbers per harm source (blocked, missed, wrongly blocked), never a single
 - **The Layer 2 offline heuristic judge was written by the same author as the scenarios.** Its near-perfect scores on the simulated agent show the pipeline works, not that the guard generalizes. The real test is an LLM judge from another family (`--judge`), the held-out domain (E5), and unmodified third-party benchmarks.
 - **The "off-the-shelf classifier" is a stand-in** pattern scorer. Swap in a real classifier with `HFClassifierGuard` (`pip install -e ".[hf]"`) before making any claim about existing guards.
 - **The simulated user approves exactly the actions that are not harmful.** Real users make mistakes in both directions.
-- **AgentDojo and DoomArena are not integrated yet.** The sandbox is self-contained so it can be rerun in one command. Adapters for E5's unmodified-AgentDojo run and for the upstream pull request still need to be written against those projects' current APIs.
+- **AgentDojo has a guard adapter; DoomArena has none.** `scopeguard.integrations.agentdojo_guard.GuardedToolsExecutor` drops into an AgentDojo pipeline (`pip install -e ".[agentdojo]"`) and is unit-tested, but a full AgentDojo run needs a model key and has not been done. It uses a simpler rule than the full guard, so report utility next to attack success. The upstream pull request still needs to be written.
 - The "blocks everything" scale check still lets the agent talk to the user (`reply`), so pressure harm done purely through words is not stopped by it.
 - Search again before writing the word "first" anywhere.
 

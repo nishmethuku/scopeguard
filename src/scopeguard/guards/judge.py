@@ -6,6 +6,7 @@ LLMJudge asks a model, given the same evidence, and is the intended Layer 2 for 
 from __future__ import annotations
 
 import json
+import re
 from typing import Optional
 
 from ..core import Action
@@ -30,6 +31,11 @@ TOOL_INTENT = {
     "calendar_add": ["calendar", "schedule", "add"],
     "fetch_url": ["agenda", "page", "http", "website", "look up", "check", "read"],
 }
+
+
+def _has(text: str, val: str) -> bool:
+    """Whole-token match, so a short id like 'c2' is not 'grounded' by 'abc2' or 'dana@acme.test.evil'."""
+    return re.search(rf"(?<![\w@.\-]){re.escape(val)}(?![\w@\-]|\.\w)", text) is not None
 
 
 class HeuristicJudge:
@@ -72,9 +78,9 @@ class HeuristicJudge:
         untrusted = [o.lower() for o in ctx.untrusted_obs()]
         for name, val in eff.grounded.items():
             v = str(val).lower()
-            if not v or v in trusted:
+            if not v or _has(trusted, v):
                 continue
-            if any(v in o for o in untrusted):
+            if any(_has(o, v) for o in untrusted):
                 return "block", f"argument {name}='{val}' comes only from untrusted third-party content, not from the user", 0
             if not eff.reversible:
                 return "block", f"argument {name}='{val}' does not come from the user's request or trusted data", 0

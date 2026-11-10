@@ -48,3 +48,11 @@ Suggested order: E1, then E3 with the four-guard subset (this answers the main q
 Pre-registration still applies: freeze before E3, or pass `--exploratory` and say so.
 
 Smaller suites give wider intervals. Say the suite size in any write-up.
+
+## Free-tier troubleshooting (Gemini)
+
+- Run `scopeguard models` to see which model IDs your key can call. Old IDs are retired for new keys (404 "no longer available to new users"), so pick one from that list.
+- 503 or 500 means the provider is overloaded. The client backs off up to 90 seconds per retry and then stops with the traces saved; rerun the same command later and it resumes.
+- 429 means a free quota is used up (per minute or per day). Lower `--rpm`, wait for the daily reset, or switch to another model, since quotas are per model.
+- Keep `--max-calls` under the daily limit of the model you use. Calls are counted per run, not per day.
+- Never put an API key in a file, a commit or a chat. Use the `GEMINI_API_KEY` environment variable and rotate the key if it leaks.

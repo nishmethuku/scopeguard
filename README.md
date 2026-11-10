@@ -70,6 +70,10 @@ E3, E4 and E5 refuse to run without a valid pre-registration lock unless you pas
 
 Three numbers per harm source (blocked, missed, wrongly blocked), never a single score. Also task completion on twins, escalations per 100 tasks, added latency and added model calls. Wilson intervals for rates; paired bootstrap over scenarios for differences between guards.
 
+## Results
+
+None yet. This section stays empty until real-model runs exist. Each row will name the exact model ID, date, suite hash, number of scenarios and seeds, and whether the run was confirmatory. Simulated-agent output never goes here.
+
 ## Honest limits (read before citing anything)
 
 - **No real-model results exist yet.** The week 1 gate (reproduce one published number) has not been run; it needs API access and a base framework run. See `docs/DESIGN.md`.
